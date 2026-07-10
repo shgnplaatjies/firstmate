@@ -90,6 +90,15 @@ test_idle_placeholder_is_empty() {
   pass "fm_composer_classify_content: a known idle placeholder reads empty, before and after glyph stripping"
 }
 
+test_idle_placeholder_case_mode_is_explicit() {
+  local idle='^Type a message\.\.\.$' out
+  out=$(classify 1 'type a message...' "$idle")
+  [ "$out" = pending ] || fail "a case-variant idle placeholder should remain pending by default, got '$out'"
+  out=$(classify 1 'type a message...' "$idle" insensitive)
+  [ "$out" = empty ] || fail "an explicitly insensitive idle placeholder should read empty, got '$out'"
+  pass "fm_composer_classify_content: idle matching preserves the caller's case mode"
+}
+
 # --- Real text is pending ---------------------------------------------------
 
 test_real_text_is_pending() {
@@ -107,4 +116,5 @@ test_bordered_shell_glyph_is_empty
 test_agent_glyphs_are_empty_bordered_and_bare
 test_empty_content_is_empty
 test_idle_placeholder_is_empty
+test_idle_placeholder_case_mode_is_explicit
 test_real_text_is_pending

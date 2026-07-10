@@ -133,18 +133,19 @@ fm_tmux_strip_ghost() {
 # what lets a bordered `│ > │` (claude's own idle composer) read empty while a
 # bare, unbordered `$ ` dead-shell prompt reads unknown.
 fm_tmux_composer_state() {  # <target> -> empty|pending|unknown
-  local target=$1 cy raw line stripped bordered=0
+  local target=$1 cy raw line trimmed stripped bordered=0
   cy=$(tmux display-message -p -t "$target" '#{cursor_y}' 2>/dev/null) || { printf 'unknown'; return 0; }
   case "$cy" in ''|*[!0-9]*) printf 'unknown'; return 0 ;; esac
   raw=$(tmux capture-pane -e -p -t "$target" -S "$cy" -E "$cy" 2>/dev/null) || { printf 'unknown'; return 0; }
   line=$(printf '%s\n' "$raw" | fm_tmux_strip_ghost)
-  # Strip the composer box borders (literal glyphs — no character classes).
-  stripped=${line//│/}      # U+2502 light vertical (claude)
-  stripped=${stripped//┃/}  # U+2503 heavy vertical
-  stripped=${stripped//|/}  # ASCII pipe
-  # A removed border glyph means this row is a genuine composer box.
-  [ "$stripped" != "$line" ] && bordered=1
-  # Trim surrounding whitespace.
+  trimmed="${line#"${line%%[![:space:]]*}"}"
+  trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+  case "$trimmed" in
+    '│'*'│') stripped=${trimmed#│}; stripped=${stripped%│}; bordered=1 ;;
+    '┃'*'┃') stripped=${trimmed#┃}; stripped=${stripped%┃}; bordered=1 ;;
+    '|'*'|') stripped=${trimmed#|}; stripped=${stripped%|}; bordered=1 ;;
+    *) stripped=$trimmed ;;
+  esac
   stripped="${stripped#"${stripped%%[![:space:]]*}"}"
   stripped="${stripped%"${stripped##*[![:space:]]}"}"
   # A busy footer landing on the cursor line is not pending input (tmux-specific:
@@ -153,7 +154,7 @@ fm_tmux_composer_state() {  # <target> -> empty|pending|unknown
      && printf '%s' "$stripped" | grep -qiE "${FM_BUSY_REGEX:-$FM_TMUX_BUSY_REGEX_DEFAULT}"; then
     printf 'empty'; return 0
   fi
-  fm_composer_classify_content "$bordered" "$stripped" "${FM_COMPOSER_IDLE_RE:-}"
+  fm_composer_classify_content "$bordered" "$stripped" "${FM_COMPOSER_IDLE_RE:-}" insensitive
 }
 
 # fm_pane_input_pending: 0 (pending) if the cursor line holds real unsubmitted

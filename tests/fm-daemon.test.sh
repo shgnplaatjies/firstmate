@@ -629,6 +629,20 @@ test_tmux_composer_state_bordered_and_agent_rows_are_empty() {
   pass "fm_tmux_composer_state: a bordered composer box and bare agent glyphs (❯/›) still read empty"
 }
 
+test_tmux_composer_state_requires_matching_box_borders() {
+  local dir fakebin capture line out
+  dir=$(make_supercase composer-decorated-shell)
+  fakebin="$dir/fakebin"; capture="$dir/pane.txt"
+  for line in '| $ ' '$ |' '│ % ' '# ┃'; do
+    printf '%s\n' "$line" > "$capture"
+    out=$(PATH="$fakebin:$PATH" FM_FAKE_TMUX_CAPTURE="$capture" FM_FAKE_TMUX_CURSOR_Y=0 \
+      fm_tmux_composer_state "fakepane")
+    [ "$out" != empty ] \
+      || fail "a decorated shell prompt '$line' must not read as an empty composer"
+  done
+  pass "fm_tmux_composer_state: only matching edge borders form a composer box"
+}
+
 test_pane_input_pending_honors_idle_override_after_border_strip() {
   local dir state fakebin capture
   dir=$(make_supercase pending-custom-idle)
@@ -1120,6 +1134,7 @@ test_pane_input_pending_blank_is_not_pending
 test_pane_input_pending_idle_prompt_not_pending
 test_tmux_composer_state_bare_shell_is_unknown
 test_tmux_composer_state_bordered_and_agent_rows_are_empty
+test_tmux_composer_state_requires_matching_box_borders
 test_pane_input_pending_honors_idle_override_after_border_strip
 test_classify_signal_dedup_against_scan
 test_classify_stale_dedup_against_signal

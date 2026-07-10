@@ -41,9 +41,17 @@
 #              "Type a message...") that reads as empty; matched both before and
 #              after a leading prompt glyph is stripped, so a pattern written
 #              with or without the glyph both land.
-# Echoes empty|pending|unknown on stdout; never fails the caller.
-fm_composer_classify_content() {  # <bordered> <content> [idle_re]
-  local bordered=$1 content=$2 idle_re=${3:-}
+fm_composer_idle_matches() {
+  local content=$1 idle_re=$2 idle_case=$3
+  [ -n "$idle_re" ] || return 1
+  case "$idle_case" in
+    insensitive) printf '%s' "$content" | grep -qiE "$idle_re" ;;
+    *) printf '%s' "$content" | grep -qE "$idle_re" ;;
+  esac
+}
+
+fm_composer_classify_content() {  # <bordered> <content> [idle_re] [idle_case]
+  local bordered=$1 content=$2 idle_re=${3:-} idle_case=${4:-sensitive}
   # A bare prompt glyph on its own row.
   case "$content" in
     '❯'|'›')
@@ -58,7 +66,7 @@ fm_composer_classify_content() {  # <bordered> <content> [idle_re]
   # Nothing on the row = empty composer.
   [ -n "$content" ] || { printf 'empty'; return 0; }
   # Known idle placeholder (matched before a leading glyph is stripped).
-  if [ -n "$idle_re" ] && printf '%s' "$content" | grep -qiE "$idle_re"; then
+  if fm_composer_idle_matches "$content" "$idle_re" "$idle_case"; then
     printf 'empty'; return 0
   fi
   # Strip a leading prompt glyph, then re-judge the remainder.
@@ -71,7 +79,7 @@ fm_composer_classify_content() {  # <bordered> <content> [idle_re]
   [ -n "$content" ] || { printf 'empty'; return 0; }
   # Known idle placeholder (matched again after the leading glyph was stripped,
   # e.g. "❯ Type a message...").
-  if [ -n "$idle_re" ] && printf '%s' "$content" | grep -qiE "$idle_re"; then
+  if fm_composer_idle_matches "$content" "$idle_re" "$idle_case"; then
     printf 'empty'; return 0
   fi
   # Real, unsubmitted content remains.
